@@ -9,7 +9,7 @@ website:
       - href: index.qmd
         text: Home
       - Orientações.qmd
-      - Solução do Desafio.qmd
+      - Solução_Desafio.qmd
       
 
 format:
