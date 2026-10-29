@@ -1,0 +1,277 @@
+---
+title: "Desafio Final: Solução"
+author: "Jamille da S. Marques"
+
+---
+
+![](images/bem-vindo.png)
+
+## Introdução
+
+Bem-vindos ao desafio final da disciplina de Introdução ao R! O objetivo deste projeto é aplicar as habilidades de manipulação, transformação e visualização de dados que aprendemos ao longo do curso em um problema real da área de melhoramento de plantas.
+
+### Contexto do Problema
+
+No melhoramento genético da linhaça (linho), pesquisadores avaliam diferentes genótipos (variedades) para selecionar aqueles com as melhores características agronômicas, como produtividade e qualidade dos grãos. Para isso, coletam dados de diversas fontes:
+
+1.  **Avaliações em laboratório/campo:** Medidas diretas nas plantas, como altura e número de ramificações.
+2.  **Análise de imagens:** Fotografias de amostras de cápsulas e grãos são processadas para extrair informações como número, tamanho e forma.
+3.  **Medidas de massa:** Pesagem de amostras de grãos para estimar o peso médio.
+
+O nosso desafio é atuar como um cientista de dados e integrar todas essas informações para criar um único conjunto de dados consolidado. Este dataset final nos permitirá comparar os genótipos de forma eficiente e extrair insights valiosos.
+
+### O Desafio
+
+Você deverá carregar, limpar, transformar e combinar quatro conjuntos de dados distintos. O objetivo final é gerar uma tabela única onde cada linha representa a **média** das características de um **genótipo**, pronta para análises estatísticas e visualizações.
+
+## Descrição dos Dados
+
+Os quatro arquivos necessários para este desafio são:
+
+- `laboratorio.xlsx`: Contém dados fenotípicos coletados diretamente das plantas no laboratório.
+  - `img`: Identificador único de cada planta.
+  - `TIPO`: O tipo de linhaça (DOURADA ou MARROM).
+  - `GEN`: O genótipo (variedade) da planta.
+  - `AP`, `AC`, `NR`, `MC`, `MG`: Variáveis agronômicas da planta (altura, etc.).
+- `capsulas.xlsx`: Resultado do processamento de imagens para contagem de cápsulas.
+  - `img`: Identificador da imagem, que contém o número do `INDIVIDUO`.
+  - Cada linha representa **uma cápsula** detectada na imagem.
+- `graos.csv`: Resultado do processamento de imagens para análise dos grãos.
+  - `img`: Identificador da imagem, que contém o número do `INDIVIDUO`.
+  - `length`, `width`: Comprimento e largura de cada grão.
+  - Cada linha representa **um grão** detectado na imagem.
+- `mmg.xlsx`: Contém a massa de mil grãos para cada genótipo.
+  - `GEN`: O genótipo.
+  - `mmg`: A massa de mil grãos, uma importante medida de produtividade.
+
+## Objetivos do Desafio
+
+Seu trabalho é criar um script em R, dentro deste documento Quarto, que realize as seguintes tarefas:
+
+### 1. Preparação do Ambiente
+
+- Carregue os pacotes necessários para a análise.
+- Importe os quatro arquivos de dados (`laboratorio.xlsx`, `capsulas.xlsx`, `graos.csv`, `mmg.xlsx`) para o seu ambiente R.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Escreva seu código aqui para carregar os pacotes e importar os dados.
+
+library(tidyverse)
+library(rio)
+
+dados <- 
+  import_list(c("laboratorio.xlsx", "capsulas.xlsx", "graos.csv", "mmg.xlsx"))
+
+```
+
+### 2. Análise e Consolidação por Planta
+
+O objetivo desta etapa é criar um único data frame que contenha todas as informações para cada planta (`img`).
+
+- **Para o arquivo `graos`:** Calcule o **número total de grãos (NG)**, o **comprimento médio (CG)** e a **largura média (LG)** para cada planta.
+- **Para o arquivo `capsulas`:** Calcule o **número total de cápsulas (NC)** para cada planta.
+- **Extração do ID:** Note que nos arquivos de imagem, a identificação da planta é um número no início da coluna `img` (ex: `"100_Cápsulas_..."`). Você precisará extrair este número para poder vincular os dados aos do arquivo `laboratorio`.
+- **Unificação:** Junte as estatísticas calculadas (NG, CG, LG, NC) ao data frame principal `laboratorio`. O resultado deve ser uma tabela onde cada linha corresponde a uma planta (`img`) com todas as suas variáveis.
+
+```{r processamento_por_planta}
+# Crie os blocos de código necessários para processar os dados de grãos, 
+# cápsulas e depois uni-los aos dados de laboratório.
+
+Passo_2 <- 
+
+library(tidyverse)
+library(readxl)
+
+# 1. Importar os ficheiros
+graos <- read_delim("graos.csv", delim = ";")
+capsulas <- read_excel("capsulas.xlsx")
+laboratorio <- read_excel("laboratorio.xlsx")
+
+# 2. Processar o arquivo 'graos'
+graos_resumido <- graos |>
+  mutate(img_id = parse_number(img)) |> 
+  group_by(img_id) |>
+  summarise(
+    NG = n(),                            # Número total de grãos (NG)
+    CG = mean(length, na.rm = TRUE),     # Comprimento médio (CG)
+    LG = mean(width, na.rm = TRUE)       # Largura média (LG)
+  )
+
+# 3. Processar o arquivo 'capsulas'
+capsulas_resumido <- capsulas |>
+  mutate(img_id = parse_number(img)) |> 
+  group_by(img_id) |>
+  summarise(
+    NC = n()                             # Número total de cápsulas (NC)
+  )
+
+# 4. Unir os dados calculados com o data frame 'laboratorio' e criar o resultado final
+resultado_final <- 
+  laboratorio |>
+  mutate(img_id = parse_number(as.character(IMG))) |> 
+  left_join(graos_resumido, by = "img_id") |>
+  left_join(capsulas_resumido, by = "img_id")
+
+# 5. Visualizar o resultado final criado
+view(resultado_final)
+
+
+```
+
+### 3. Análise e Consolidação por Genótipo
+
+Com os dados consolidados por planta, o próximo passo é agregar as informações para obter um resumo por genótipo.
+
+- **Agregação:** Calcule a **média** de todas as variáveis numéricas (altura da planta, número de grãos, etc.) para cada genótipo (`GEN`).
+- **Junção Final:** Adicione a informação de massa de mil grãos (`mmg`) do arquivo `mmg` ao seu data frame de genótipos.
+- **Resultado Final:** O produto desta etapa deve ser um data frame limpo e organizado, onde **cada linha representa um genótipo** e as colunas representam as médias de suas características.
+
+```{r processamento_por_genotipo}
+# Escreva seu código aqui para agrupar os dados por genótipo,
+# calcular as médias e juntar com os dados de massa de mil grãos.
+
+Passo_3 <- 
+  
+library(tidyverse)
+library(readxl)
+
+# 1. Agrupar por genótipo e calcular a média de todas as variáveis numéricas
+genotipo_resumido <- resultado_final |>
+  group_by(GEN) |>
+  summarise(
+    across(where(is.numeric) & !matches("img_id"), ~ mean(.x, na.rm = TRUE))
+  )
+
+# 2. Carregar o arquivo de massa de mil grãos
+mmg <- read_excel("mmg.xlsx")
+
+# 3. Juntar dados, posicionar GPOP1 e GPOP2 no início, ordenar o restante e colocar colunas em MAIÚSCULO
+resultado_genotipo <- genotipo_resumido |>
+  left_join(mmg, by = "GEN") |>
+  # Definir a ordem: GPOP1 primeiro, GPOP2 segundo, e o restante em ordem numérica crescente
+  arrange(
+    case_when(
+      GEN == "GPOP1" ~ 1,
+      GEN == "GPOP2" ~ 2,
+      TRUE ~ 2 + parse_number(as.character(GEN))
+    )
+  ) |>
+  # Retornar todos os nomes das colunas para MAIÚSCULO
+  rename_with(toupper)
+
+# 4. Visualizar o resultado final ajustado
+view(resultado_genotipo)
+
+
+```
+
+### 4. Exploração e Visualização
+
+Agora que você tem um dataset final consolidado por genótipo, crie **pelo menos duas visualizações** diferentes para explorar os dados. O objetivo é investigar possíveis relações entre as variáveis e comparar o desempenho dos genótipos.
+
+- **Perguntas que você deve responder:**
+
+  - *Como a altura da planta se relaciona com o número de cápsulas?*
+  
+  As plantas entre ~70cm e ~100cm são as que produzem mais cápsulas. Conforme a planta fica mais alta, ela diminiu a produção de cápsulas. 
+  
+  
+  - *Há indícios de que genótipos do tipo "DOURADA" e "MARROM" diferem em relação à altura de planta?*
+  
+  Sim. A linhaça do tipo MARROM é a que atinge maior altura, configurando um perfil melhor para fibra, enquanto a do tipo DOURADA apresenta menor altura e maior produtividade de cápsulas, apresentando um melhor perfil para produção de grãos. 
+  
+  
+  - *Quais os top 5 genótipos para produção de grãos (MG) de cada tipo de linhaça?*
+  
+  TIPO    GEN      MG
+ 1 DOURADA G5     5.28
+ 2 DOURADA G56    5.09
+ 3 DOURADA G23    3.89
+ 4 DOURADA G18    3.68
+ 5 DOURADA G1     3.59
+ 6 MARROM  G4     7.04
+ 7 MARROM  G2     6.32
+ 8 MARROM  G223   5.83
+ 9 MARROM  G63    5.01
+10 MARROM  G12    4.94
+
+
+  - *Calcule o diferencial de seleção, ou seja, a diferença da média geral e a média dos top 5 genótipos, para cada tipo de linhaça, representando os valores em um gráfico de barras.* 
+  
+  O gráfico ja esta representado e as médias são 2.18 para o genótipo DOURADA e 3.52 para o genótipo MARROM. 
+  
+  
+```{r}
+Passo_4 <-
+
+library(tidyverse)
+
+# 1. Visualização 1: Relação entre Altura da Planta (AP) e Número de Cápsulas (NC) por Tipo
+grafico_dispersao <- resultado_genotipo |>
+  ggplot(aes(x = AP, y = NC, color = TIPO)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  labs(
+    title = "Relação entre Altura da Planta e Número de Cápsulas",
+    subtitle = "Comparação entre os tipos Dourada e Marrom",
+    x = "Altura da Planta - AP (m)",
+    y = "Número de Cápsulas - NC",
+    color = "Tipo de Linhaça"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 12))
+
+print(grafico_dispersao)
+
+
+# 2. Identificação dos Top 5 Genótipos para Produção de Grãos (MG) por Tipo
+top5_por_tipo <- resultado_genotipo |>
+  group_by(TIPO) |>
+  slice_max(order_by = MG, n = 5) |>
+  select(TIPO, GEN, MG)
+
+print("--- Top 5 Genótipos por Tipo para Produção de Grãos (MG) ---")
+print(top5_por_tipo)
+
+
+# 3. Cálculo do Diferencial de Seleção para cada Tipo de Linhaça (Corrigido)
+media_geral <- resultado_genotipo |>
+  group_by(TIPO) |>
+  summarise(Media_Geral = mean(MG, na.rm = TRUE))
+
+media_top5 <- resultado_genotipo |>
+  group_by(TIPO) |>
+  slice_max(order_by = MG, n = 5) |>
+  summarise(Media_Top5 = mean(MG, na.rm = TRUE))
+
+diferencial_selecao <- media_geral |>
+  left_join(media_top5, by = "TIPO") |>
+  mutate(Diferencial_Selecao = Media_Top5 - Media_Geral)
+
+print("--- Diferencial de Seleção por Tipo ---")
+print(diferencial_selecao)
+
+
+# 4. Visualização 2: Gráfico de Barras do Diferencial de Seleção
+grafico_barras <- diferencial_selecao |>
+  ggplot(aes(x = TIPO, y = Diferencial_Selecao, fill = TIPO)) +
+  geom_col(width = 0.5, show.legend = FALSE) +
+  geom_text(aes(label = round(Diferencial_Selecao, 2)), vjust = -0.5, fontface = "bold") +
+  labs(
+    title = "Diferencial de Seleção para Produção de Grãos (MG)",
+    subtitle = "Diferença entre a média dos Top 5 e a Média Geral por tipo de linhaça",
+    x = "Tipo de Linhaça",
+    y = "Diferencial de Seleção (MG)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 12))
+
+print(grafico_barras)
+```
+  
+  
+
+## Conclusão
+
+Analisando os dados do experimento, observa-se que as plantas com altura intermediária (entre 70 cm e 100 cm) entregam a maior produção de cápsulas, visto que plantas excessivamente altas reduzem essa produtividade. Constata-se também uma diferença clara entre os dois tipos de linhaça: a Marrom cresce mais e se destaca no ganho de seleção para a produção de grãos (com destaque para genótipos expressivos como o G4 e o G2), enquanto a Dourada (liderada pelos genótipos G5 e G56) tende a apresentar porte maior. 
+
